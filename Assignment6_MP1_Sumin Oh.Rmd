@@ -1,0 +1,128 @@
+---
+title: "Assignment MP1"
+author: "Sumin Oh"
+date: "2024-10-19"
+output: html_document
+---
+#### 1. Import data and create Time series
+```{r}
+library(fpp2)
+library(readr)
+library(readxl)
+FV<-read.csv("/Users/suminoh/Downloads/flightVolume.csv")
+FV_ts<-ts(FV$reslong,start=c(1976,1),frequency=12)
+
+```
+
+#### 2. Verify how much history to include in your analysis
+```{r}
+plot(FV_ts)
+Acf(FV_ts)
+#It seems that the data has high correlation at lags 12 and 24, and it means that it has seasonality and the cycle is around 12 months. So at least 12 months should be included in my analysis.
+```
+
+#### 3. Hypothesize if the dataset has trend, seasonality, or both. 
+```{r}
+# I believe it has seasonality with 12 months period. By looking at the plot of time series, it seems to have trend changing over time. So this dataset is likely to have both trend and seasonality.
+```
+
+#### 4.Verify using Acf
+```{r}
+acf(FV_ts)
+# It has correlation at 12 and 24. Indicating that this dataset has yearly seasonality.
+```
+
+#### 5. Verify using Decomposition
+```{r}
+FV_decomp<-decompose(FV_ts)
+plot(FV_decomp)
+#The trend component indicates that this data has trend with ups and downs over time.
+#It shows a clear seasonality with repeating ups and downs with regular intervals.
+#So this dataset has both trend and seasonality.
+```
+
+#### 6. Choose an accuracy measure
+```{r}
+# I chose MAE, since this measure puts same weight to large and small errors. The dataset is about flight volume and the considering that the numbers are not too big, MAE can be a good method to measure the accuracy.
+```
+
+#### 7. Create a forecast model for the next 12 months. Include Naive, Average, Exponential Smoothing, HoltWinters, and Decomposition (both types). 
+
+```{r}
+#1.Naive
+FV_naive<-naive(FV_ts,h=12)
+#2.Average
+FV_avg<-meanf(FV_ts,h=12)
+#3.Exponential Smoothing
+FV_SES<- HoltWinters(FV_ts,beta=FALSE,gamma=FALSE)
+FV_SES_FC <- forecast(FV_SES,h=12)
+#4.HoltWinters
+FV_HW<-hw(FV_ts,h=12)
+#5.Decomposition
+FV_stl<-stl(FV_ts,s.window = "periodic")
+FV_stl_FC<-forecast(FV_stl,h=12)
+
+
+```
+
+#### 8. Show model rank with accuracy measures
+```{r}
+a<-accuracy(FV_naive)
+b<-accuracy(FV_avg)
+c<-accuracy(FV_SES_FC)
+d<-accuracy(FV_HW)
+e<-accuracy(FV_stl_FC)
+
+accuracymeasure<-rbind(a,b,c,d,e)
+rownames(accuracymeasure)<-c('Naive','Average','SES','HW','Decomp')
+accuracymeasure
+rank(accuracymeasure[,"MAE"])
+
+```
+
+#### 9. Choose which models and how are you going to use them for Forecasting
+```{r}
+#I will choose Holt Winters model for forecasting since it has the smallest MAE. Even though SES overestimates the value by -0.19%, it's still considered low among other models. 
+```
+
+#### 10. Provide the forecast for the next 12 months (point and range) and explain why you feel confident with these forecasts
+```{r}
+plot(FV_HW)
+FV_HW
+#I could see the confidence intervals are not excessively wide and remain within appropriate level, and a narrow confidence interval indicates that model is likely to predict accurately.
+```
+
+#### +) Another column -resshort
+```{r}
+FV_ts_resshort<-ts(FV$resshort,start=c(1976,1),frequency=12)
+plot(FV_ts_resshort)
+
+#1.Naive
+FV_res_naive<-naive(FV_ts_resshort,h=12)
+#2.Average
+FV_res_avg<-meanf(FV_ts_resshort,h=12)
+#3.Exponential Smoothing
+FV_res_SES<- HoltWinters(FV_ts_resshort,beta=FALSE,gamma=FALSE)
+FV_res_SES_FC <- forecast(FV_res_SES,h=12)
+#4.HoltWinters
+FV_res_HW<-hw(FV_ts_resshort,h=12)
+#5.Decomposition
+FV_res_stl<-stl(FV_ts_resshort,s.window = "periodic")
+FV_res_stl_FC<-forecast(FV_res_stl,h=12)
+
+f=accuracy(FV_res_naive)
+g=accuracy(FV_res_avg)
+h=accuracy(FV_res_SES_FC)
+i=accuracy(FV_res_HW)
+j=accuracy(FV_res_stl_FC)
+
+accuracymeasure2=rbind(f,g,h,i,j)
+rownames(accuracymeasure2)=c('Naive','Avg','SES','HW','Decompose')
+
+accuracymeasure2
+accuracymeasure
+
+#Using MAE, still, HW model has the smallest error values for the resshort column. However, HW model underestimates the value by 0.29%, contrary to the HW forecast value of reslong column, which overestimated the value by 0.19%
+
+```
+
